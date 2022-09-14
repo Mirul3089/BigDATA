@@ -1,0 +1,8 @@
+1.Download java and Hadoop
+-Install java by using this command "sudo apt-get install openjdk-8-jdk"
+-Install hadoop version from this "https://archive.apache.org/dist/hadoop/common/".You will get a tar file.
+Untar this file by simply selecting "extract all" by right click on a file or you can use this "tar -xvf archive.tar.gz" to unzip.
+
+-After downloading and extraction you have to set enviornmental variable path for java and hadoop
+ Open .bashrc file by using "gedit .bashrc" then go to last line of the file
+ 
