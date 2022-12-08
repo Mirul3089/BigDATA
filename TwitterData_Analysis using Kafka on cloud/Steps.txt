@@ -1,0 +1,28 @@
+Steps performed:
+
+1)Created one EC2 instance and connected using CMD
+
+2)Downloaded & Installed Apache Kafka in a instance by using this command "wget https://downloads.apache.org/kafka/3.3.1/kafka_2.12-3.3.1.tgz"
+
+3)Then changed ADVERTISED_LISTENERS to public ip of the EC2 instance in a server.properties file
+
+4)And then created a topic and in kafka_producer.ipynb, I have use the twitter API to extract data
+
+5)After that, sent those data to a producer and on other side consumer consumes the data
+
+6)Then stored or send that consumed data to S3 bucket.
+
+7)From the AWS glue I have used crawler to generate schema for my raw_data(stored in s3) and populated AWS 
+glue catalog with tables in a specific database.
+
+8)Lastly, performed an analysis using Athena 
+
+Technology Used
+Programming Language - Python
+Amazon Web Service (AWS)
+S3 (Simple Storage Service)
+Athena
+Glue Crawler
+Glue Catalog
+EC2
+Apache Kafka
