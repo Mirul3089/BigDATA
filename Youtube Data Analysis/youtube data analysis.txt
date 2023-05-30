@@ -1,0 +1,77 @@
+scope: client want to run youtube advertisement campaign
+
+Data source:https://www.kaggle.com/datasets/datasnaek/youtube-new
+
+1. installed AWS CLI in local and configured users with it.
+2. used copy command to copy all the data with .json extension from source to s3 bucket
+aws s3 cp . s3://yt-raw-data/youtube/raw_statistics_reference_data/ --recursive --exclude "*" --include "*.json"
+
+used copy commands to copy all the data with .csv extension from source to s3 bucket
+aws s3 cp CAvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=ca/
+aws s3 cp DEvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=de/
+aws s3 cp FRvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=fr/
+aws s3 cp GBvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=gb/
+aws s3 cp INvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=in/
+aws s3 cp JPvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=jp/
+aws s3 cp KRvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=kr/
+aws s3 cp MXvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=mx/
+aws s3 cp RUvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=ru/
+aws s3 cp USvideos.csv s3://yt-raw-data/youtube/raw_statistics/region=us/
+
+3. AWS glue catalog(metadata repository):extracts metadata from data sources and build a catalog in that crwaler will store all information about data.
+
+4.used Glue and created crawler json data with (.json extension) and that has created table.but table wasn't accurate as I was not able to run queries due to lack of serde properties.
+
+4.Performed a pre-transformations on json data to write it in a parquet format by using LAMBDA function.set the enviornmental varaiables.
+
+5.configured the test event for s3-put to test the lambda functions 
+        "bucket": {
+          "name": "yt-raw-data",
+          "ownerIdentity": {
+            "principalId": "EXAMPLE"
+          },
+          "arn": "arn:aws:s3::  :yt-raw-data"
+        },
+        "object": {
+          "key": "youtube/raw_statistics_reference_data/CA_category_id.json",
+          "size": 1024,
+          "eTag": "0123456789abcdef0123456789abcdef",
+          "sequencer": "0A1B2C3D4E5F678901"
+        }
+      
+
+6.
+***used this qury to join those tables of raw and cleaned tables
+SELECT * FROM "raw-data-s3"."raw_statistics" r
+INNER JOIN  "db_youtube_cleaned"."cleansed_raw_statistics_reference_data" c 
+ON r.category_id=cast(c.id as int);
+
+7.created crawler for region (.csv) data and modify the schema by changing the datatype from string to bigint  .
+ 
+8.run the lambda test again.
+
+9.to transfer crawled data and created glue ETL job to transfer crawled region data into cleansed s3 bucket. 
+& then 
+***modified spark script for only three regions and the run that Glue job
+
+10. created a crawler for cleaned region data
+**********************
+
+11.Created a trigger for lambda function on s3 bucket , to make lambda run everytime whenever new file is uploaded inside the bucket.
+then lambda function should run and it will convert those json data parquet and will store into cleansed bucket.
+
+12.created a ETL job using AWS GLUE studio by dragging source, operations and target. where I have choose two tables from same database (of AWS catalog) and 
+join those tables using inner join inside studio and then stored that joined data into final analytical bucket after the completion of that ETL job. 
+
+13.Gave permissions of S3 to quicksight for various buckets and created/build datasets from ATHENNA then just save and publish.
+
+14.build the dashborad.
+
+** *****
+uploaded raw data into s3 raw bucket
+
+clesned/write those json data into parquet format.
+
+wrote jobs and write join queries inside aws studio for writing jobs and make reporting data version.
+
+visualize the data into quicksight by maing dashboards. 
