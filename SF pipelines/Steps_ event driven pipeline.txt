@@ -1,0 +1,108 @@
+1.Created a External stage to read data from S3 bucket and file formats
+
+External stage:-
+
+CREATE STAGE UNI_KISHORE_PIPELINE
+URL ='s3://uni-kishore-pipeline';
+
+FileFormat:-
+
+CREATE FILE FORMAT FF_JSON_LOGS
+type='JSON'
+strip_outer_array = true;
+
+2.created table and load the data into table by using copy into command
+Query used:
+
+COPY INTO ED_PIPELINE_LOGS
+FROM (
+    SELECT 
+    METADATA$FILENAME as log_file_name 
+  , METADATA$FILE_ROW_NUMBER as log_file_row_id 
+  , current_timestamp(0) as load_ltz 
+  , get($1,'datetime_iso8601')::timestamp_ntz as DATETIME_ISO8601
+  , get($1,'user_event')::text as USER_EVENT
+  , get($1,'user_login')::text as USER_LOGIN
+  , get($1,'ip_address')::text as IP_ADDRESS    
+  FROM @AGS_GAME_AUDIENCE.RAW.UNI_KISHORE_PIPELINE //external stage
+)
+file_format = (format_name = ff_json_logs);
+
+3.created SNS topic in AWS and put event inside s3 that will notify the topic whenever there will be a new object
+3.Took the access policy from snowflake to subscribe for topic and then modify the access policy in SNS
+4.created snowpipe with sns topic and stream that will keep track of changes to the table
+
+Query used:
+//whenever there are notification from topic, pipe will automatically activate and run a task inside it.
+CREATE OR REPLACE PIPE GET_NEW_FILES
+auto_ingest=true
+aws_sns_topic='arn:aws:sns:us-west-2:321463406630:dngw_topic'
+AS 
+COPY INTO ED_PIPELINE_LOGS
+FROM (
+    SELECT 
+    METADATA$FILENAME as log_file_name 
+  , METADATA$FILE_ROW_NUMBER as log_file_row_id 
+  , current_timestamp(0) as load_ltz 
+  , get($1,'datetime_iso8601')::timestamp_ntz as DATETIME_ISO8601
+  , get($1,'user_event')::text as USER_EVENT
+  , get($1,'user_login')::text as USER_LOGIN
+  , get($1,'ip_address')::text as IP_ADDRESS    
+  FROM @AGS_GAME_AUDIENCE.RAW.UNI_KISHORE_PIPELINE
+)
+file_format = (format_name = ff_json_logs);
+
+5.--created a stream that will keep track of changes to the table
+create or replace stream ags_game_audience.raw.ed_cdc_stream 
+on table AGS_GAME_AUDIENCE.RAW.ED_PIPELINE_LOGS;
+
+6.create another task by using various snowflake functions to modify and load that data into enhanced tables.
+Query used:
+
+--using CDC stream as source for table as stream has latest changes that was done in the table. 
+--Create a new task that uses the MERGE you just tested
+create or replace task AGS_GAME_AUDIENCE.RAW.CDC_LOAD_LOGS_ENHANCED
+	USER_TASK_MANAGED_INITIAL_WAREHOUSE_SIZE='XSMALL'
+	SCHEDULE = '5 minutes'
+WHEN 
+    system$system_has_data('ed_cdc_stream')
+	as 
+MERGE INTO AGS_GAME_AUDIENCE.ENHANCED.LOGS_ENHANCED e
+USING (
+        SELECT cdc.ip_address 
+        , cdc.user_login as GAMER_NAME
+        , cdc.user_event as GAME_EVENT_NAME
+        , cdc.datetime_iso8601 as GAME_EVENT_UTC
+        , city
+        , region
+        , country
+        , timezone as GAMER_LTZ_NAME
+        , CONVERT_TIMEZONE( 'UTC',timezone,cdc.datetime_iso8601) as game_event_ltz
+        , DAYNAME(game_event_ltz) as DOW_NAME
+        , TOD_NAME
+        from ags_game_audience.raw.ed_cdc_stream cdc //we are checking and merging only chaged data
+        JOIN ipinfo_geoloc.demo.location loc 
+        ON ipinfo_geoloc.public.TO_JOIN_KEY(cdc.ip_address) = loc.join_key
+        AND ipinfo_geoloc.public.TO_INT(cdc.ip_address) 
+        BETWEEN start_ip_int AND end_ip_int
+        JOIN AGS_GAME_AUDIENCE.RAW.TIME_OF_DAY_LU tod
+        ON HOUR(game_event_ltz) = tod.hour
+      ) r
+ON r.GAMER_NAME = e.GAMER_NAME
+AND r.GAME_EVENT_UTC = e.GAME_EVENT_UTC
+AND r.GAME_EVENT_NAME = e.GAME_EVENT_NAME 
+WHEN NOT MATCHED THEN 
+INSERT (IP_ADDRESS, GAMER_NAME, GAME_EVENT_NAME
+        , GAME_EVENT_UTC, CITY, REGION
+        , COUNTRY, GAMER_LTZ_NAME, GAME_EVENT_LIZ
+        , DOW_NAME, TOD_NAME)
+        VALUES
+        (IP_ADDRESS, GAMER_NAME, GAME_EVENT_NAME
+        , GAME_EVENT_UTC, CITY, REGION
+        , COUNTRY, GAMER_LTZ_NAME, GAME_EVENT_LTZ
+        , DOW_NAME, TOD_NAME);
+
+7.based on cleaned data created dashboards in snowflake
+
+8.--Resume the task so it is running
+alter task AGS_GAME_AUDIENCE.RAW.CDC_LOAD_LOGS_ENHANCED resume;
