@@ -8,10 +8,10 @@ from pathlib import Path
 
 def run_twitter_etl():
 
-    access_key = "at1yd9fG92cSK4t66wilxUzPh"
-    access_secret = "57UvJC5iI0U3IjW3PpKrHNgVVxgN960pE3Cj3luwlaaLgn2SNJ"
-    consumer_key = "1572291219094388737-KylV8njAzXm1PG4Qz3Qz40jlGaJrnc"
-    consumer_secret = "w3AcaEDa6p1BpOWA7OVW5d2KsfH8bWgPnbFC2Df3XlGX9"
+    access_key = ""
+    access_secret = ""
+    consumer_key = ""
+    consumer_secret = ""
 
     #asking for a access using access keys and secret
     auth = tweepy.OAuthHandler(access_key, access_secret)
