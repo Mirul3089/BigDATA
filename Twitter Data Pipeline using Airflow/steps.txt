@@ -5,7 +5,7 @@ apache-airflow, pandas, s3fs, tweepy
 
 3. started the airflow server and logged in the airflow console. change the security group for instance.
 
-4.  created python file and in that, I have created DAG with arguments and to call function from twitter_etl.py through python opeartor imported from airflow.(twitter_dag.py)
+4.  created python file and in that, I have created DAG with arguments and to call function from twitter_etl.py through python operator imported from airflow.(twitter_dag.py)
 
 5.created S3 bucket to store the data which are extracted by using twitter API as well as give the access to EC2 to access S3 bucket.
 
